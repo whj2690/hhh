@@ -1,0 +1,98 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.dao.CustomerDao">
+    
+    <resultMap id="customerMap" type="com.crm.entity.Customer">
+        <id property="id" column="id"/>
+        <result property="name" column="name"/>
+        <result property="contactPerson" column="contact_person"/>
+        <result property="phone" column="phone"/>
+        <result property="email" column="email"/>
+        <result property="address" column="address"/>
+        <result property="industry" column="industry"/>
+        <result property="level" column="level"/>
+        <result property="status" column="status"/>
+        <result property="source" column="source"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+    </resultMap>
+
+    <select id="findAll" resultMap="customerMap">
+        SELECT * FROM customer ORDER BY create_time DESC
+    </select>
+
+    <select id="findByCondition" resultMap="customerMap">
+        SELECT * FROM customer 
+        <where>
+            <if test="name != null and name != ''">
+                AND name LIKE CONCAT('%', #{name}, '%')
+            </if>
+            <if test="level != null and level != ''">
+                AND level = #{level}
+            </if>
+            <if test="status != null and status != ''">
+                AND status = #{status}
+            </if>
+        </where>
+        ORDER BY create_time DESC
+    </select>
+
+    <select id="findById" resultMap="customerMap">
+        SELECT * FROM customer WHERE id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO customer (
+            name, contact_person, phone, email, address, 
+            level, industry, source, status, create_user_id, 
+            create_time
+        ) VALUES (
+            #{name}, #{contactPerson}, #{phone}, #{email}, #{address},
+            #{level}, #{industry}, #{source}, #{status}, #{createUserId},
+            NOW()
+        )
+    </insert>
+
+    <update id="update" parameterType="com.crm.entity.Customer">
+        UPDATE customer
+        SET 
+            name = #{name},
+            contact_person = #{contactPerson},
+            phone = #{phone},
+            email = #{email},
+            address = #{address},
+            level = #{level},
+            industry = #{industry},
+            source = #{source},
+            status = #{status},
+            update_time = #{updateTime}
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM customer WHERE id = #{id}
+    </delete>
+
+    <update id="updateStatus">
+        UPDATE customer SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <select id="getCustomerCount" resultType="int">
+        SELECT COUNT(*) FROM customer
+    </select>
+    
+    <select id="countByType" resultType="map">
+        SELECT type, COUNT(*) as count 
+        FROM customer 
+        GROUP BY type
+    </select>
+    
+    <select id="getNewCustomerCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM customer 
+        WHERE DATE_FORMAT(create_time, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+</mapper> 

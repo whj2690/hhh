@@ -1,0 +1,167 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.dao.SalesOrderDao">
+    
+    <resultMap id="orderMap" type="com.crm.entity.SalesOrder">
+        <id property="id" column="id"/>
+        <result property="orderNo" column="order_no"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="opportunityId" column="opportunity_id"/>
+        <result property="amount" column="amount"/>
+        <result property="status" column="status"/>
+        <result property="paymentStatus" column="payment_status"/>
+        <result property="deliveryDate" column="delivery_date"/>
+        <result property="description" column="description"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        
+        <association property="customer" javaType="com.crm.entity.Customer">
+            <id property="id" column="c_id"/>
+            <result property="name" column="c_name"/>
+        </association>
+        
+        <association property="opportunity" javaType="com.crm.entity.SalesOpportunity">
+            <id property="id" column="o_id"/>
+            <result property="name" column="o_name"/>
+        </association>
+        
+        <association property="createUser" javaType="com.crm.entity.User">
+            <id property="id" column="u_id"/>
+            <result property="username" column="u_username"/>
+            <result property="realName" column="u_real_name"/>
+        </association>
+    </resultMap>
+
+    <sql id="selectFields">
+        so.*, 
+        c.id as c_id, c.name as c_name,
+        o.id as o_id, o.name as o_name,
+        u.id as u_id, u.username as u_username, u.real_name as u_real_name
+    </sql>
+
+    <sql id="joinTables">
+        sales_order so
+        LEFT JOIN customer c ON so.customer_id = c.id
+        LEFT JOIN sales_opportunity o ON so.opportunity_id = o.id
+        LEFT JOIN user u ON so.create_user_id = u.id
+    </sql>
+
+    <select id="findAll" resultMap="orderMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        ORDER BY so.create_time DESC
+    </select>
+
+    <select id="findByCondition" resultMap="orderMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        <where>
+            <if test="customerId != null">
+                AND so.customer_id = #{customerId}
+            </if>
+            <if test="status != null and status != ''">
+                AND so.status = #{status}
+            </if>
+            <if test="paymentStatus != null and paymentStatus != ''">
+                AND so.payment_status = #{paymentStatus}
+            </if>
+        </where>
+        ORDER BY so.create_time DESC
+    </select>
+
+    <select id="findById" resultMap="orderMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        WHERE so.id = #{id}
+    </select>
+
+    <select id="findByOrderNo" resultMap="orderMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        WHERE so.order_no = #{orderNo}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sales_order (
+            order_no, customer_id, opportunity_id, amount,
+            status, payment_status, delivery_date, description,
+            create_user_id
+        ) VALUES (
+            #{orderNo}, #{customerId}, #{opportunityId}, #{amount},
+            #{status}, #{paymentStatus}, #{deliveryDate}, #{description},
+            #{createUserId}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE sales_order
+        <set>
+            <if test="amount != null">amount = #{amount},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="paymentStatus != null">payment_status = #{paymentStatus},</if>
+            <if test="deliveryDate != null">delivery_date = #{deliveryDate},</if>
+            <if test="description != null">description = #{description},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM sales_order WHERE id = #{id}
+    </delete>
+
+    <update id="updateStatus">
+        UPDATE sales_order SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updatePaymentStatus">
+        UPDATE sales_order SET payment_status = #{paymentStatus}
+        WHERE id = #{id}
+    </update>
+
+    <select id="getOrderCount" resultType="int">
+        SELECT COUNT(*) FROM sales_order
+    </select>
+    
+    <select id="getTotalAmount" resultType="decimal">
+        SELECT COALESCE(SUM(amount), 0) FROM sales_order
+    </select>
+    
+    <select id="getMonthlyOrderCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM sales_order 
+        WHERE DATE_FORMAT(create_time, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+    
+    <select id="getMonthlyAmount" resultType="decimal">
+        SELECT COALESCE(SUM(amount), 0)
+        FROM sales_order 
+        WHERE DATE_FORMAT(create_time, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+    
+    <select id="getMonthlySales" resultType="map">
+        SELECT DATE_FORMAT(create_time, '%Y-%m') as month,
+               COALESCE(SUM(amount), 0) as amount
+        FROM sales_order
+        WHERE create_time >= DATE_SUB(NOW(), INTERVAL 12 MONTH)
+        GROUP BY DATE_FORMAT(create_time, '%Y-%m')
+        ORDER BY month
+    </select>
+    
+    <select id="getSalesByCustomerType" resultType="map">
+        SELECT c.type, COALESCE(SUM(o.amount), 0) as amount
+        FROM sales_order o
+        JOIN customer c ON o.customer_id = c.id
+        GROUP BY c.type
+    </select>
+    
+    <select id="getSalesByProductType" resultType="map">
+        SELECT p.type, COALESCE(SUM(o.amount), 0) as amount
+        FROM sales_order o
+        JOIN order_product op ON o.id = op.order_id
+        JOIN product p ON op.product_id = p.id
+        GROUP BY p.type
+    </select>
+</mapper> 

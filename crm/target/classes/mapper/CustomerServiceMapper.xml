@@ -1,0 +1,141 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.dao.CustomerServiceDao">
+    
+    <resultMap id="serviceMap" type="com.crm.entity.CustomerService">
+        <id property="id" column="id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="type" column="type"/>
+        <result property="title" column="title"/>
+        <result property="content" column="content"/>
+        <result property="status" column="status"/>
+        <result property="handler" column="handler"/>
+        <result property="result" column="result"/>
+        <result property="satisfaction" column="satisfaction"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        
+        <association property="customer" javaType="com.crm.entity.Customer">
+            <id property="id" column="c_id"/>
+            <result property="name" column="c_name"/>
+        </association>
+        
+        <association property="createUser" javaType="com.crm.entity.User">
+            <id property="id" column="u_id"/>
+            <result property="username" column="u_username"/>
+            <result property="realName" column="u_real_name"/>
+        </association>
+    </resultMap>
+
+    <sql id="selectFields">
+        cs.*, 
+        c.id as c_id, c.name as c_name,
+        u.id as u_id, u.username as u_username, u.real_name as u_real_name
+    </sql>
+
+    <sql id="joinTables">
+        customer_service cs
+        LEFT JOIN customer c ON cs.customer_id = c.id
+        LEFT JOIN user u ON cs.create_user_id = u.id
+    </sql>
+
+    <select id="findAll" resultMap="serviceMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        ORDER BY cs.create_time DESC
+    </select>
+
+    <select id="findByCondition" resultMap="serviceMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        <where>
+            <if test="customerId != null">
+                AND cs.customer_id = #{customerId}
+            </if>
+            <if test="type != null and type != ''">
+                AND cs.type = #{type}
+            </if>
+            <if test="status != null and status != ''">
+                AND cs.status = #{status}
+            </if>
+        </where>
+        ORDER BY cs.create_time DESC
+    </select>
+
+    <select id="findById" resultMap="serviceMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        WHERE cs.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO customer_service (
+            customer_id, type, title, content,
+            status, create_user_id
+        ) VALUES (
+            #{customerId}, #{type}, #{title}, #{content},
+            #{status}, #{createUserId}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE customer_service
+        <set>
+            <if test="type != null">type = #{type},</if>
+            <if test="title != null">title = #{title},</if>
+            <if test="content != null">content = #{content},</if>
+            <if test="status != null">status = #{status},</if>
+            <if test="handler != null">handler = #{handler},</if>
+            <if test="result != null">result = #{result},</if>
+            <if test="satisfaction != null">satisfaction = #{satisfaction},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM customer_service WHERE id = #{id}
+    </delete>
+
+    <update id="updateStatus">
+        UPDATE customer_service SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateHandler">
+        UPDATE customer_service SET handler = #{handler}
+        WHERE id = #{id}
+    </update>
+
+    <update id="updateResult">
+        UPDATE customer_service 
+        SET result = #{result}, 
+            satisfaction = #{satisfaction},
+            status = 'COMPLETED'
+        WHERE id = #{id}
+    </update>
+
+    <select id="getServiceCount" resultType="int">
+        SELECT COUNT(*) FROM customer_service
+    </select>
+    
+    <select id="getPendingCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM customer_service 
+        WHERE status = 'PENDING'
+    </select>
+    
+    <select id="getMonthlyServiceCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM customer_service 
+        WHERE DATE_FORMAT(create_time, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+    
+    <select id="countBySatisfaction" resultType="map">
+        SELECT satisfaction, COUNT(*) as count
+        FROM customer_service
+        WHERE satisfaction IS NOT NULL
+        GROUP BY satisfaction
+    </select>
+</mapper> 

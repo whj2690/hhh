@@ -1,0 +1,123 @@
+<?xml version="1.0" encoding="UTF-8" ?>
+<!DOCTYPE mapper PUBLIC "-//mybatis.org//DTD Mapper 3.0//EN" 
+    "http://mybatis.org/dtd/mybatis-3-mapper.dtd">
+<mapper namespace="com.crm.dao.SalesOpportunityDao">
+    
+    <resultMap id="opportunityMap" type="com.crm.entity.SalesOpportunity">
+        <id property="id" column="id"/>
+        <result property="customerId" column="customer_id"/>
+        <result property="name" column="name"/>
+        <result property="expectedAmount" column="expected_amount"/>
+        <result property="stage" column="stage"/>
+        <result property="successRate" column="success_rate"/>
+        <result property="expectedClosingDate" column="expected_closing_date"/>
+        <result property="description" column="description"/>
+        <result property="status" column="status"/>
+        <result property="createUserId" column="create_user_id"/>
+        <result property="createTime" column="create_time"/>
+        <result property="updateTime" column="update_time"/>
+        
+        <association property="customer" javaType="com.crm.entity.Customer">
+            <id property="id" column="c_id"/>
+            <result property="name" column="c_name"/>
+        </association>
+        
+        <association property="createUser" javaType="com.crm.entity.User">
+            <id property="id" column="u_id"/>
+            <result property="username" column="u_username"/>
+            <result property="realName" column="u_real_name"/>
+        </association>
+    </resultMap>
+
+    <sql id="selectFields">
+        o.*, 
+        c.id as c_id, c.name as c_name,
+        u.id as u_id, u.username as u_username, u.real_name as u_real_name
+    </sql>
+
+    <sql id="joinTables">
+        sales_opportunity o
+        LEFT JOIN customer c ON o.customer_id = c.id
+        LEFT JOIN user u ON o.create_user_id = u.id
+    </sql>
+
+    <select id="findAll" resultMap="opportunityMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        ORDER BY o.create_time DESC
+    </select>
+
+    <select id="findByCondition" resultMap="opportunityMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        <where>
+            <if test="customerId != null">
+                AND o.customer_id = #{customerId}
+            </if>
+            <if test="stage != null and stage != ''">
+                AND o.stage = #{stage}
+            </if>
+            <if test="status != null and status != ''">
+                AND o.status = #{status}
+            </if>
+        </where>
+        ORDER BY o.create_time DESC
+    </select>
+
+    <select id="findById" resultMap="opportunityMap">
+        SELECT <include refid="selectFields"/>
+        FROM <include refid="joinTables"/>
+        WHERE o.id = #{id}
+    </select>
+
+    <insert id="insert" useGeneratedKeys="true" keyProperty="id">
+        INSERT INTO sales_opportunity (
+            customer_id, name, expected_amount, stage,
+            success_rate, expected_closing_date, description,
+            status, create_user_id
+        ) VALUES (
+            #{customerId}, #{name}, #{expectedAmount}, #{stage},
+            #{successRate}, #{expectedClosingDate}, #{description},
+            #{status}, #{createUserId}
+        )
+    </insert>
+
+    <update id="update">
+        UPDATE sales_opportunity
+        <set>
+            <if test="name != null">name = #{name},</if>
+            <if test="expectedAmount != null">expected_amount = #{expectedAmount},</if>
+            <if test="stage != null">stage = #{stage},</if>
+            <if test="successRate != null">success_rate = #{successRate},</if>
+            <if test="expectedClosingDate != null">expected_closing_date = #{expectedClosingDate},</if>
+            <if test="description != null">description = #{description},</if>
+            <if test="status != null">status = #{status},</if>
+        </set>
+        WHERE id = #{id}
+    </update>
+
+    <delete id="delete">
+        DELETE FROM sales_opportunity WHERE id = #{id}
+    </delete>
+
+    <update id="updateStatus">
+        UPDATE sales_opportunity SET status = #{status}
+        WHERE id = #{id}
+    </update>
+
+    <select id="getOpportunityCount" resultType="int">
+        SELECT COUNT(*) FROM sales_opportunity
+    </select>
+    
+    <select id="countByStage" resultType="map">
+        SELECT stage, COUNT(*) as count 
+        FROM sales_opportunity 
+        GROUP BY stage
+    </select>
+    
+    <select id="getNewOpportunityCount" resultType="int">
+        SELECT COUNT(*) 
+        FROM sales_opportunity 
+        WHERE DATE_FORMAT(create_time, '%Y%m') = DATE_FORMAT(NOW(), '%Y%m')
+    </select>
+</mapper> 
